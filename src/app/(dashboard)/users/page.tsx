@@ -20,10 +20,9 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null); // Track user being edited
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -46,27 +45,25 @@ export default function UsersPage() {
 
       setUsers(usersRes.data.users || usersRes.data);
       setRoles(rolesRes.data);
-    } catch (err) {
+    } catch {
       setError("Failed to load data. Please check permissions.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Open Modal for Creating (Reset Form)
   const openCreateModal = () => {
     setEditingUser(null);
     setFormData({ name: "", email: "", password: "", roleId: "" });
     setIsModalOpen(true);
   };
 
-  // Open Modal for Editing (Pre-fill Form)
   const openEditModal = (user: User) => {
     setEditingUser(user);
     setFormData({
       name: user.name,
       email: user.email,
-      password: "", // Password stays blank unless they want to change it
+      password: "",
       roleId: user.role?._id || "",
     });
     setIsModalOpen(true);
@@ -82,19 +79,15 @@ export default function UsersPage() {
         email: formData.email,
         roleId: formData.roleId,
       };
-      if (formData.password) {
-        payload.password = formData.password;
-      }
 
-      // 1. Safety Check
+      if (formData.password) payload.password = formData.password;
+
       const roleObj = roles.find((r) => r._id === formData.roleId);
       if (!roleObj) {
         toast.error("Invalid Role selected");
-        setIsSubmitting(false);
         return;
       }
 
-      // 2. Perform the API Operation
       if (editingUser) {
         await api.put(`/users/${editingUser._id}`, payload);
         toast.success("User updated successfully!");
@@ -103,13 +96,9 @@ export default function UsersPage() {
         toast.success("User created successfully!");
       }
 
-      // 3. THE FIX: Re-fetch the fresh list from the server
-      // This guarantees the UI shows exactly what is in the database (Active: True)
       await fetchData();
-
       setIsModalOpen(false);
     } catch (error: any) {
-      console.error(error);
       toast.error(error.response?.data?.message || "Operation failed");
     } finally {
       setIsSubmitting(false);
@@ -118,25 +107,22 @@ export default function UsersPage() {
 
   const handleDelete = async (userId: string) => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
-    try {
-      await api.delete(`/users/${userId}`);
-      setUsers(users.filter((u) => u._id !== userId));
-    } catch (error) {
-      alert("Failed to delete user");
-    }
+    await api.delete(`/users/${userId}`);
+    setUsers(users.filter((u) => u._id !== userId));
   };
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
           <p className="text-sm text-gray-500">
@@ -144,8 +130,8 @@ export default function UsersPage() {
           </p>
         </div>
         <button
-          className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg font-medium text-white hover:bg-blue-700 transition-colors"
           onClick={openCreateModal}
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus className="h-5 w-5 mr-2" />
           Add User
@@ -153,74 +139,70 @@ export default function UsersPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      {/* User List (Desktop Table) */}
-      <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200 hidden md:block">
-        <table className="min-w-full divide-y divide-gray-200">
+      {/* Desktop Table */}
+      <div className="hidden md:block bg-white rounded-lg shadow border">
+        <table className="min-w-full divide-y">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">
                 User
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">
                 Role
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">
                 Status
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y">
             {users.map((user) => (
               <tr key={user._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {user.name}
-                      </div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </div>
+                <td className="px-6 py-4 flex items-center gap-4">
+                  <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center font-bold text-blue-600">
+                    {user.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{user.name}</p>
+                    <p className="text-sm text-gray-500">{user.email}</p>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                <td className="px-6 py-4">
+                  <span className="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">
                     {user.role?.name || "No Role"}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4">
                   {user.isActive ? (
-                    <span className="inline-flex items-center text-xs font-medium text-green-800">
-                      <CheckCircle className="h-3 w-3 mr-1 text-green-500" />{" "}
+                    <span className="flex items-center text-green-600 text-sm">
+                      <CheckCircle className="h-4 w-4 mr-1" />
                       Active
                     </span>
                   ) : (
-                    <span className="inline-flex items-center text-xs font-medium text-red-800">
-                      <XCircle className="h-3 w-3 mr-1 text-red-500" /> Inactive
+                    <span className="flex items-center text-red-600 text-sm">
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Inactive
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {/* Edit Button Connected */}
+                <td className="px-6 py-4 text-right">
                   <button
                     onClick={() => openEditModal(user)}
-                    className="text-blue-600 hover:text-blue-900 mr-4"
+                    className="text-blue-600 mr-3"
                   >
                     <Edit2 className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(user._id)}
-                    className="text-red-600 hover:text-red-900"
+                    className="text-red-600"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -231,114 +213,81 @@ export default function UsersPage() {
         </table>
       </div>
 
-      {/* User List (Mobile Cards) */}
+      {/* Mobile Cards */}
       <div className="md:hidden space-y-4">
         {users.map((user) => (
           <div
             key={user._id}
-            className="bg-white p-4 rounded-lg shadow border border-gray-200"
+            className="bg-white rounded-xl shadow border p-4 space-y-3"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center">
-                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold mr-3">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900">
-                    {user.name}
-                  </h3>
-                  <p className="text-xs text-gray-500">{user.email}</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+                {user.name.charAt(0)}
               </div>
-              <div className="flex space-x-3">
-                {/* Edit Button Mobile */}
-                <button
-                  onClick={() => openEditModal(user)}
-                  className="text-blue-500"
-                >
-                  <Edit2 className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(user._id)}
-                  className="text-red-500"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
+              <div>
+                <p className="font-semibold text-gray-900">{user.name}</p>
+                <p className="text-sm text-gray-500">{user.email}</p>
               </div>
             </div>
-            <div className="flex justify-between items-center text-xs">
+
+            <div className="flex justify-between text-sm">
               <span className="px-2 py-1 rounded bg-purple-100 text-purple-800">
                 {user.role?.name || "No Role"}
               </span>
-              {user.isActive ? (
-                <span className="text-green-600 font-medium">Active</span>
-              ) : (
-                <span className="text-red-600 font-medium">Inactive</span>
-              )}
+              <span
+                className={
+                  user.isActive
+                    ? "text-green-600 font-medium"
+                    : "text-red-600 font-medium"
+                }
+              >
+                {user.isActive ? "Active" : "Inactive"}
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-4 pt-2 border-t">
+              <button
+                onClick={() => openEditModal(user)}
+                className="text-blue-600 flex items-center gap-1"
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(user._id)}
+                className="text-red-600 flex items-center gap-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* CREATE / EDIT USER MODAL */}
+      {/* Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingUser ? "Edit User" : "Create New User"}
+        title={editingUser ? "Edit User" : "Create User"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Full Name
-            </label>
-            <input
-              type="text"
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Email Address
-            </label>
-            <input
-              type="email"
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Password{" "}
-              {editingUser && (
-                <span className="text-gray-400 font-normal">
-                  (Leave blank to keep current)
-                </span>
-              )}
-            </label>
-            <input
-              type="password"
-              // Password is only required if we are NOT editing (creating new)
-              required={!editingUser}
-              minLength={6}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              placeholder={editingUser ? "••••••••" : ""}
-            />
-          </div>
+          {["name", "email", "password"].map((field) => (
+            <div key={field}>
+              <label className="block text-sm font-medium text-gray-700 capitalize">
+                {field}
+              </label>
+              <input
+                type={field === "password" ? "password" : "text"}
+                required={field !== "password" || !editingUser}
+                className="mt-1 w-full rounded-md border px-3 py-2 bg-white text-gray-900 placeholder-gray-400 focus:ring-1 focus:ring-blue-500"
+                value={(formData as any)[field]}
+                onChange={(e) =>
+                  setFormData({ ...formData, [field]: e.target.value })
+                }
+              />
+            </div>
+          ))}
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -346,13 +295,13 @@ export default function UsersPage() {
             </label>
             <select
               required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 w-full rounded-md border px-3 py-2 bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
               value={formData.roleId}
               onChange={(e) =>
                 setFormData({ ...formData, roleId: e.target.value })
               }
             >
-              <option value="">Select a Role</option>
+              <option value="">Select Role</option>
               {roles.map((role) => (
                 <option key={role._id} value={role._id}>
                   {role.name}
@@ -361,21 +310,21 @@ export default function UsersPage() {
             </select>
           </div>
 
-          <div className="pt-4 flex justify-end space-x-3">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+              className="px-4 py-2 bg-gray-100 rounded-md"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50"
             >
               {isSubmitting && (
-                <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
               )}
               {editingUser ? "Update User" : "Create User"}
             </button>
